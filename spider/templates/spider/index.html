@@ -1,0 +1,12 @@
+<label for="source_url">Enter site url</label><input id="source_url" type="text"/>
+{#TODO: Also add checkbox "Limit to domain"#}
+{#TODO: Convert to form#}
+{% if processed_urls %}
+    <ul>
+    {% for processed_url in processed_urls %}
+        <li><a href="{{ processed_url }}/">{{ processed_url }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No urls are found</p>
+{% endif %}
