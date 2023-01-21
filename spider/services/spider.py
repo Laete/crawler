@@ -1,5 +1,5 @@
 from typing import List, Optional, Set
-from urllib import request, parse, error
+from urllib import request, parse
 from bs4 import BeautifulSoup
 
 
@@ -24,7 +24,6 @@ class Spider:
         parsed_link = parse.urlparse(link)
         self._current_hostname = parsed_link.netloc
         self._current_protocol = parsed_link.scheme
-        self._current_domain = f"{self._current_protocol}://{self._current_hostname}"
 
         page = self._get_page(link)
         links = self._find_links(page)
@@ -47,6 +46,7 @@ class Spider:
 
             return mystr
         except Exception as e:
+            print(f'Raised exception {e} on page {link}')
             return ''
 
     @staticmethod
@@ -74,15 +74,13 @@ class Spider:
                 continue
 
             # normalizing link
-            if link.startswith("http"):
-                normalized_link = link
-            elif link.startswith("//"):
-                normalized_link = f"{self._current_protocol}:{link}"
-            else:
-                normalized_link = f"{self._current_domain}{link}"
+            parsed_url = parse.urlparse(link)
+            scheme = parsed_url.scheme or self._current_protocol
+            netloc = parsed_url.netloc or self._current_hostname
+            normalized_link = parse.urlunparse((scheme, netloc, parsed_url.path, '', '', ''))
 
             # limiting to domain
-            if self._limit_to_domain and f"//{self._current_hostname}" not in normalized_link:
+            if self._limit_to_domain and f"{self._current_hostname}" not in normalized_link:
                 continue
             result.add(normalized_link)
         return result
