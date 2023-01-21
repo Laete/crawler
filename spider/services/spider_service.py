@@ -26,4 +26,3 @@ class SpiderService:
         # puts new links into queue
         # async
         pass
-    
