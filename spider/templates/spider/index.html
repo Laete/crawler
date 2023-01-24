@@ -27,6 +27,7 @@
     </div>
     <div class="content__right">
         <h3 class="content__result-header">Results:</h3>
+        <span class="content__result-info"></span>
         <div class="urls-list">
             <ul>
 
@@ -35,12 +36,18 @@
     </div>
     <script>
         (function () {
+            let shouldLongPoll = false;
+
             function submitCrawl() {
+                const btn = document.querySelector('#crawl');
+                btn.classList.add('disabled');
+
                 const sourceUrl = document.querySelector('#source_url').value;
                 const workersCount = document.querySelector('#workers_count').value;
                 const maxDepth = document.querySelector('#max_depth').value;
                 const limitToDomain = document.querySelector('#limit_to_domain').checked;
 
+                shouldLongPoll = true;
                 fetch('/query', {
                     method: 'POST',
                     headers: {
@@ -57,18 +64,51 @@
                 })
                     .then((response) => response.json())
                     .then((data) => {
-                        const { result, delta } = data;
+                        const {result, delta} = data;
                         if (result.length > 0) {
-                            redrawLinks(result, delta);
+                            redrawLinks(result, delta, false);
+                            shouldLongPoll = false;
                         }
                     });
+                startLongPolling();
             }
 
-            function redrawLinks(links, delta) {
+            function redrawLinks(links, delta, inProgress) {
                 const list = document.querySelector('.urls-list > ul');
                 list.innerHTML = links.map((link) => `<li class="urls-list__link"><a href="${link}/">${link}</a></li>`).join('');
+
                 const resultHeader = document.querySelector('.content__result-header');
-                resultHeader.innerHTML = `Result (${links.length} links acquired in ${delta} seconds):`;
+                const resultInfo = document.querySelector('.content__result-info');
+                if (inProgress) {
+                    resultHeader.innerHTML = `Acquiring results, ${links.length} for now...`;
+                    resultInfo.innerHTML = '';
+                } else {
+                    resultHeader.innerHTML = `All ${links.length} links acquired`;
+                    resultInfo.innerHTML = `Took ${delta} seconds`
+
+                    const btn = document.querySelector('#crawl');
+                    btn.classList.remove('disabled');
+                }
+            }
+
+            function startLongPolling() {
+                setInterval(function () {
+                    if (shouldLongPoll) {
+                        fetch('/current', {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        })
+                            .then((response) => response.json())
+                            .then((data) => {
+                                const {result, delta} = data;
+                                if (result.length > 0) {
+                                    redrawLinks(result, delta, true);
+                                }
+                            });
+                    }
+                }, 5000);
             }
 
             const btn = document.querySelector('#crawl');

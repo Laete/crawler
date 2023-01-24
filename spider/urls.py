@@ -6,4 +6,5 @@ app_name = 'spider'
 urlpatterns = [
     path('', views.IndexView.as_view(), name='index'),
     path('query', views.query, name='query'),
+    path('current', views.current, name='current'),
 ]

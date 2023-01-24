@@ -7,12 +7,13 @@
 }
 
 .content__left {
-    width: 400px;
+    width: 600px;
     margin-right: 12px;
 }
 
 .content__right {
     overflow: auto;
+    width: calc(100vw - 600px);
 }
 
 h2 {
@@ -35,6 +36,7 @@ h2 {
     padding: 4px 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    width: 300px;
 }
 
 input[type="checkbox"].field__input {
@@ -69,4 +71,9 @@ input[type="checkbox"].field__input {
 
 .urls-list__link {
     margin-bottom: 4px;
+}
+
+.content__result-info {
+    color: #5f5f69;
+    font-size: 12px;
 }

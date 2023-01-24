@@ -1,6 +1,6 @@
 import datetime
 from queue import Queue
-from typing import Set, List
+from typing import Optional, Set, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 import logging
@@ -16,22 +16,27 @@ logger = logging.getLogger(__name__)
 class SpiderService:
     _links_to_process: Queue
     _urls_to_display: Set[str]
+    _executor: Optional[ThreadPoolExecutor]
 
     def __init__(self):
         self.current_link = None
         self._links_to_process = Queue()
         self._urls_to_display = set([])
+        self._executor = None
 
     def clear(self):
         self._urls_to_display = set([])
+        if self._executor:
+            self._executor.shutdown()
 
     def get_processed_links(self):
         return self._urls_to_display
 
-    def process_link(self, link: str, max_depth: int, workers_count: int, limit_to_domain: bool) -> Set[str]:
+    def process_link(self, link: str, max_depth: int, workers_count: int, limit_to_domain: bool) -> Tuple[Set[str], int]:
         before = datetime.datetime.now()
-        self._urls_to_display = set([])
-        with ThreadPoolExecutor(max_workers=workers_count) as executor:
+        self.clear()
+        self._executor = ThreadPoolExecutor(max_workers=workers_count)
+        with self._executor as executor:
             future_links_list = {
                 executor.submit(self._process_link, Link(url=url, depth=0), limit_to_domain, max_depth) for url in [link]
             }

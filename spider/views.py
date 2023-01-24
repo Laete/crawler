@@ -46,3 +46,9 @@ def query(request):
             pass
 
     return HttpResponse(json.dumps({'result': list(result), 'delta': delta}), content_type='application/json')
+
+
+def current(request):
+    result = spider_service.get_processed_links()
+
+    return HttpResponse(json.dumps({'result': list(result), 'delta': -1}), content_type='application/json')
