@@ -1,12 +1,118 @@
-<label for="source_url">Enter site url</label><input id="source_url" type="text"/>
-{#TODO: Also add checkbox "Limit to domain"#}
-{#TODO: Convert to form#}
-{% if processed_urls %}
-    <ul>
-    {% for processed_url in processed_urls %}
-        <li><a href="{{ processed_url }}/">{{ processed_url }}</a></li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No urls are found</p>
-{% endif %}
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'spider/main.css' %}">
+<div class="content">
+    <div class="content__left">
+        <div class="header">
+            <h2>MVP Site crawler</h2>
+        </div>
+
+        <div class="field">
+            <label for="source_url" class="field__label">Enter site url</label>
+            <input id="source_url" name="source_url" type="text" value="" class="field__input"/>
+        </div>
+        <div class="field">
+            <label for="workers_count" class="field__label">How many workers to use</label>
+            <input id="workers_count" name="workers_count" type="number" value="10" class="field__input"/>
+        </div>
+        <div class="field">
+            <label for="max_depth" class="field__label">Maximum crawl depth</label>
+            <input id="max_depth" name="max_depth" type="number" value="3" class="field__input"/>
+        </div>
+        <div class="field">
+            <label for="limit_to_domain" class="field__label">Limit to domain</label>
+            <input id="limit_to_domain" name="limit_to_domain" type="checkbox" checked class="field__input"/>
+        </div>
+        <button class="btn" id="crawl">Crawl!</button>
+    </div>
+    <div class="content__right">
+        <h3 class="content__result-header">Results:</h3>
+        <span class="content__result-info"></span>
+        <div class="urls-list">
+            <ul>
+
+            </ul>
+        </div>
+    </div>
+    <script>
+        (function () {
+            let shouldLongPoll = false;
+
+            function submitCrawl() {
+                const btn = document.querySelector('#crawl');
+                btn.classList.add('disabled');
+
+                const sourceUrl = document.querySelector('#source_url').value;
+                const workersCount = document.querySelector('#workers_count').value;
+                const maxDepth = document.querySelector('#max_depth').value;
+                const limitToDomain = document.querySelector('#limit_to_domain').checked;
+
+                shouldLongPoll = true;
+                fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source_url: sourceUrl,
+                        workers_count: workersCount,
+                        max_depth: maxDepth,
+                        limit_to_domain: limitToDomain,
+                    })
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const {result, delta} = data;
+                        if (result.length > 0) {
+                            redrawLinks(result, delta, false);
+                            shouldLongPoll = false;
+                        }
+                    });
+                startLongPolling();
+            }
+
+            function redrawLinks(links, delta, inProgress) {
+                const list = document.querySelector('.urls-list > ul');
+                list.innerHTML = links.map((link) => `<li class="urls-list__link"><a href="${link}/">${link}</a></li>`).join('');
+
+                const resultHeader = document.querySelector('.content__result-header');
+                const resultInfo = document.querySelector('.content__result-info');
+                if (inProgress) {
+                    resultHeader.innerHTML = `Acquiring results, ${links.length} for now...`;
+                    resultInfo.innerHTML = '';
+                } else {
+                    resultHeader.innerHTML = `All ${links.length} links acquired`;
+                    resultInfo.innerHTML = `Took ${delta} seconds`
+
+                    const btn = document.querySelector('#crawl');
+                    btn.classList.remove('disabled');
+                }
+            }
+
+            function startLongPolling() {
+                setInterval(function () {
+                    if (shouldLongPoll) {
+                        fetch('/current', {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        })
+                            .then((response) => response.json())
+                            .then((data) => {
+                                const {result, delta} = data;
+                                if (result.length > 0) {
+                                    redrawLinks(result, delta, true);
+                                }
+                            });
+                    }
+                }, 5000);
+            }
+
+            const btn = document.querySelector('#crawl');
+            btn.addEventListener('click', submitCrawl);
+        })();
+    </script>
+</div>
