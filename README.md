@@ -7,9 +7,10 @@
 ## Installation
 ```shell
 git clone https://github.com/Laete/crawler.git
+cd crawler
 python3 -m venv .venv
 source .venv/bin/activate
-pip3 install
+pip3 install -r requirements.txt
 ```
 
 ## Run
