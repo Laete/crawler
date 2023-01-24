@@ -1,6 +1,10 @@
 from typing import List, Optional, Set
 from urllib import request, parse
 from bs4 import BeautifulSoup
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Spider:
@@ -46,7 +50,7 @@ class Spider:
 
             return mystr
         except Exception as e:
-            print(f'Raised exception {e} on page {link}')
+            logger.debug(f'Raised exception {e} on page {link}')
             return ''
 
     @staticmethod

@@ -1,9 +1,16 @@
 import datetime
 from queue import Queue
 from typing import Set
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+import logging
+
 from spider.types import Link
 from spider.services.spider import Spider
+
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class SpiderService:
@@ -14,37 +21,34 @@ class SpiderService:
         self.current_link = None
         self._links_to_process = Queue()
         self._urls_to_display = set([])
-        self._threads = []
 
     def get_processed_links(self):
         return self._urls_to_display
 
     def process_link(self, link: str):
-        self._links_to_process.put(Link(url=link, depth=0))
-        self._urls_to_display.add(link)
-        workers_count = 10
-        # TODO: display time delta
         before = datetime.datetime.now()
-        print(f'Started crawling at {before}')
-        self._threads = [
-            Thread(target=self._process_link, args=[_], daemon=True).start() for _ in range(workers_count)
-        ]
-        self._links_to_process.join()
+        with ThreadPoolExecutor(max_workers=10) as executor:  # TODO: from form
+            future_links_list = {executor.submit(self._process_link, Link(url=url, depth=0)) for url in [link]}
+            while len(future_links_list) > 0:
+                for future_links in as_completed(future_links_list):
+                    result = future_links.result()
+                    if len(result) > 0:
+                        future_links_list.update([executor.submit(self._process_link, new_link) for new_link in result])
+                    future_links_list.remove(future_links)
         after = datetime.datetime.now()
-        print(f'Finished crawling at {after}, took {(after-before).total_seconds()} seconds')
+        logger.info(f'Finished crawling at {after}, took {(after - before).total_seconds()} seconds')
         return self._urls_to_display
 
-    def _process_link(self, threadNo: int):
-        while True:
-            link_to_process = self._links_to_process.get()
-            spider = Spider(True)
-            print(f'Crawling page {link_to_process.url} on thread {threadNo}, depth {link_to_process.depth}')
-            new_links = spider.crawl_page(link_to_process.url)
-            if link_to_process.depth < 3:  # TODO: const
-                for new_link in new_links:
-                    if new_link not in self._urls_to_display:
-                        self._links_to_process.put(Link(url=new_link, depth=link_to_process.depth + 1))
-            self._urls_to_display.update(new_links)
-            self._links_to_process.task_done()
+    def _process_link(self, link_to_process: Link):
+        self._urls_to_display.add(link_to_process.url)
+        new_urls = Spider(True).crawl_page(link_to_process.url)  # TODO: from form
+        new_links = []
+        if link_to_process.depth < 2:  # TODO: from form
+            new_links = [
+                Link(url=new_link, depth=link_to_process.depth + 1) for new_link in new_urls
+                if new_link not in self._urls_to_display
+            ]
+        self._urls_to_display.update(new_urls)
 
+        return new_links
 
