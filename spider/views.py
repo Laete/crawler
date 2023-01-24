@@ -1,20 +1,20 @@
 from django.views import generic
 
-from .services import SpiderService, Spider
+from .services import SpiderService
 
 
 class IndexView(generic.ListView):
-    spider_service: SpiderService
+    _spider_service: SpiderService
 
-    template_name = 'spider/index.html'
-    context_object_name = 'processed_urls'
+    template_name = "spider/index.html"
+    context_object_name = "processed_urls"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.spider_service = SpiderService()
-        self.spider = Spider(True)
+        self._spider_service = SpiderService()
 
     def get_queryset(self):
         """Return all links"""
-        #return self.spider_service.get_processed_links()
-        return self.spider.crawl_page('https://en.wikipedia.org/wiki/Django_(web_framework)')
+        return self._spider_service.process_link(
+            "https://www.crummy.com/software/BeautifulSoup/"
+        )
